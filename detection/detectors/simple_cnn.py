@@ -54,7 +54,7 @@ if __name__ == '__main__':
     batch_size = 3000
     no_of_objects = 5
     input_shape = (64, 64, 3)
-    samples_per_epoc = 3000
+    samples_per_epoc = 60000
     nb_epocs = 500
 
     model = cnn_conv3(input_shape=input_shape, out_size=no_of_objects)

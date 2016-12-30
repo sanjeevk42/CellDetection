@@ -69,8 +69,8 @@ def feature_to_annotations(input_img, label_map, bbox_map):
     label_shape = label_map.shape
     grid_size = np.array([image_shape[0] / label_shape[0], image_shape[1] / label_shape[1]])
     annotations = []
-    for i in xrange(label_map.shape[0]):
-        for j in xrange(label_map.shape[1]):
+    for i in range(label_map.shape[0]):
+        for j in range(label_map.shape[1]):
             grid_center = grid_size * (i, j) + grid_size / 2
             if label_map[i][j] > 0:
                 x, y, s = grid_center[0], grid_center[1], label_map[i][j]
@@ -86,7 +86,7 @@ def draw_prediction(input_img, labels, bboxes):
     '''
     ann_img = np.array(input_img)
     no_of_predictions = len(labels)
-    for i in xrange(no_of_predictions):
+    for i in range(no_of_predictions):
         minx, miny, maxx, maxy, confidence = map(int, bboxes[i])
         if labels[i] == 1:
             cv2.rectangle(ann_img, (minx, miny), (maxx, maxy), (0, 0, 255), 2)

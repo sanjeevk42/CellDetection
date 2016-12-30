@@ -3,14 +3,14 @@ import datetime
 
 class Logger:
     def info(self, str):
-        print str
+        print(str)
 
     def log(self, tags, message, *args):
         tag = ":".join(tags)
         header = "{}[{}]:".format(datetime.datetime.now(), tag)
         message = str(message)
         message = message.format(*args)
-        print header + message
+        print(header + message)
 
     def error(self, message="", *args):
         self.log(["ERROR"], message, *args)

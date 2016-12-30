@@ -162,7 +162,7 @@ class ImageDataset(object):
         Returns largest image region such that it covers complete annotated region in all input images.
         '''
         img_bounds = []
-        for key, annotations in all_annotations.iteritems():
+        for key, annotations in all_annotations.items():
             minx = min(annotations, key=lambda ann: ann[0])[0]
             maxx = max(annotations, key=lambda ann: ann[0])[0]
             miny = min(annotations, key=lambda ann: ann[1])[1]
@@ -211,8 +211,8 @@ class ImageDataset(object):
         label_map = np.zeros(response_map_shape + [1])
 
         bbox_size = patch.frame_info.bbox
-        for i in xrange(bbox_map_shape[0]):
-            for j in xrange(bbox_map_shape[1]):
+        for i in range(int(bbox_map_shape[0])):
+            for j in range(int(bbox_map_shape[1])):
                 grid_index = np.array([i, j]) * grid_size
                 grid_bound = tuple(grid_index) + tuple(grid_index + grid_size)
                 best_annotation_idx = -1
@@ -269,8 +269,8 @@ class ImageDataset(object):
         bbox_map = np.zeros(response_map_shape + [nb_objects, 5])
         patch_annotations = patch.annotations
         bbox_size = patch.frame_info.bbox
-        for i in xrange(response_map_shape[0]):
-            for j in xrange(response_map_shape[1]):
+        for i in range(response_map_shape[0]):
+            for j in range(response_map_shape[1]):
                 grid_index = np.array([i, j]) * grid_size
                 grid_bounds = tuple(grid_index) + tuple(grid_index + grid_size)
                 grid_annotations = [ann for ann in patch_annotations if
@@ -282,7 +282,7 @@ class ImageDataset(object):
                     reverse=True)
 
                 grid_ann_length = len(grid_annotations)
-                for ann_idx in xrange(min(grid_ann_length, nb_objects)):
+                for ann_idx in range(min(grid_ann_length, nb_objects)):
                     x, y, s = grid_annotations[ann_idx]
                     confidence = image_utils.intersection(grid_bounds, self.get_bbox(ann, bbox_size))
                     obj_center = np.array([x, y]) - grid_index
@@ -326,7 +326,7 @@ class ImageDataset(object):
         patch_annotations.sort(key=lambda x: image_utils.intersection(patch_bound, self.get_bbox(x, bbox_size)),
                                reverse=True)
         no_of_annotations = len(patch_annotations)
-        for i in xrange(min(no_of_objects, no_of_annotations)):
+        for i in range(min(no_of_objects, no_of_annotations)):
             ann_bound = self.get_bbox(patch_annotations[i], bbox_size)
             bboxes[i] = ann_bound + (image_utils.intersection(patch_bound, ann_bound),)
             labels[i] = 1
@@ -349,8 +349,8 @@ if __name__ == '__main__':
     for data in dataset_gen.grid_patch_dataset_generator(200, patch_size=(224, 224), grid_size=(32, 32), nb_objects=5):
         img_data = data[0]['input_1']
         labels, bboxes = data[1]['class_out'], data[1]['bb_out']
-        print img_data.shape, labels.shape, bboxes.shape
-        # for i in xrange(len(img_data)):
+        #print img_data.shape, labels.shape, bboxes.shape
+        # for i in range(len(img_data)):
         #     img_ann = image_utils.draw_prediction(patch.get_img(), labels, bboxes)
         # cv2.imwrite('/data/patches/pred{}.png'.format(i), img_ann)
         # label_map, bbox_map = dataset_gen.grid_ground_truth(patches[0], (28, 28))

@@ -49,8 +49,8 @@ if __name__ == '__main__':
     dataset_dir = '/data/lrz/hm-cell-tracking/sequences_A549/annotations'
     checkpoint_dir = '/data/training/yolo'
     nb_objects = 5
-    batch_size = 10
-    samples_per_epoc = 10
+    batch_size = 100
+    samples_per_epoc = 5000
     nb_epocs = 500
     patch_size = (224, 224)
     grid_size = (32, 32)

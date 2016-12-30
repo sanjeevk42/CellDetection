@@ -64,8 +64,8 @@ class Detectnet(object):
 if __name__ == '__main__':
     dataset_dir = '/data/lrz/hm-cell-tracking/sequences_A549/annotations'
     checkpoint_dir = '/data/training/detectnet'
-    batch_size = 10
-    samples_per_epoc = 6000
+    batch_size = 25
+    samples_per_epoc = 5000
     nb_epocs = 500
     patch_size = (224, 224)
     grid_size = (32, 32)
