@@ -16,7 +16,7 @@ class DatasetGenerator(object):
         self.dataset_size = self.dataset.dataset_size
         self.split_dataset(test_ratio, validation_ratio)
         self.all_frames = self.dataset.all_frames
-        print self.testing_idx
+        # print self.testing_idx
 
     def split_dataset(self, test_ratio, validation_ratio):
         '''

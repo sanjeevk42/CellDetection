@@ -72,6 +72,6 @@ if __name__ == '__main__':
         input_img = input['input_1']
         plt.figure(1), plt.imshow(input_img.squeeze(axis=0))
         class_score, bb_score = output['class_out'], output['bb_out']
-        print class_score, bb_score
+        print(class_score, bb_score)
         # plt.figure(2), plt.imshow(np.squeeze(out_img))
         plt.show()

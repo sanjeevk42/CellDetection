@@ -102,7 +102,6 @@ class FCNDetector(AbstractDetector):
             false_pos = set(range(len(predicted_annotations))) - {match[0] for match in matches}
             unmatched = set(range(len(actual_annotations))) - {match[1] for match in matches}
             unmatched_annotations = [frame.annotations[idx] for idx in unmatched]
-            print false_pos
             annotated_img = np.array(response_map)
             bbox_size = (20, 20)
             if len(false_pos) > 1:

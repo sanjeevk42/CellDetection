@@ -220,13 +220,13 @@ class ImageDataset(object):
             pixel_vector = np.reshape(frame.img_data,
                                       [frame.img_data.shape[0] * frame.img_data.shape[1], frame.img_data.shape[2]])
             pixel_vectors.extend(pixel_vector.tolist())
-        print 'Total vectors', len(pixel_vectors)
+        print('Total vectors', len(pixel_vectors))
         pca = PCA(n_components=3)
         pca.fit(np.array(pixel_vectors))
         cov = pca.get_covariance()
-        print 'Cov', cov
+        print('Cov', cov)
         w, v  = np.linalg.eig(cov)
-        print w,v
+        print(w,v)
 
 
 if __name__ == '__main__':

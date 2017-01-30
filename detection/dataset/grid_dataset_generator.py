@@ -151,4 +151,4 @@ if __name__ == '__main__':
         plt.figure(1), plt.imshow(input_img.squeeze(axis=0))
         plt.show()
         class_score, bb_score = output['class_out'], output['bb_out']
-        print class_score, bb_score
+        print(class_score, bb_score)

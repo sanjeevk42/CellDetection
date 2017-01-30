@@ -155,10 +155,10 @@ def filename_to_id(filename):
 
 
 if __name__ == '__main__':
-    print filename_to_id('cam0_0089.jpg')
-    print filename_to_id('00220_bw.png')
+    print(filename_to_id('cam0_0089.jpg'))
+    print(filename_to_id('00220_bw.png'))
     image = np.array(cv2.imread('/data/lrz/hm-cell-tracking/annotations/in/cam0_0314.jpg'), dtype=np.float64)
-    print local_maxima(image[:, :, 0], 20, 0.5)
+    print(local_maxima(image[:, :, 0], 20, 0.5))
     # k = gaussian_kernel((41, 41), 10, 1)
     # plt.imshow(k, interpolation='nearest')
     # plt.show()
