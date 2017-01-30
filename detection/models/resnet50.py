@@ -11,6 +11,7 @@ from __future__ import print_function
 
 import os
 
+import cv2
 import keras.backend as K
 from keras.engine import Model
 from keras.layers import BatchNormalization, UpSampling2D, Reshape
@@ -147,7 +148,7 @@ def ResNet50(include_top=True, weights='imagenet',
             input_shape = (None, None, 3)
 
     if input_tensor is None:
-        img_input = Input(shape=(224, 224, 3))
+        img_input = Input(batch_shape=(224, 224, 3))
     else:
         if not K.is_keras_tensor(input_tensor):
             img_input = Input(tensor=input_tensor)
@@ -203,15 +204,18 @@ def ResNet50(include_top=True, weights='imagenet',
                 convert_all_kernels_in_model(model)
         else:
             if include_top:
-                model.load_weights(TF_WEIGHTS_PATH)
+                model.load_weights(TF_WEIGHTS_PATH, by_name=True)
             else:
-                model.load_weights(TF_WEIGHTS_PATH_NO_TOP)
+                model.load_weights(TF_WEIGHTS_PATH_NO_TOP, by_name=True)
             if K.backend() == 'theano':
                 convert_all_kernels_in_model(model)
     return model
 
 
 if __name__ == '__main__':
-    model = ResNet50(include_top=False, weights='imagenet')
-    model = UpSampling2D(size=(4, 4))(model)
-    model = Convolution2D(2, 1, 1)(model)
+    model = ResNet50(include_top=False, input_tensor=Input(batch_shape=(1, None, None, 3)))
+    model.load_weights('/data/cell_detection/fcn_deconv_seq1_norm/model_checkpoints/model.hdf5', by_name=False)
+    img_data = cv2.imread('/data/lrz/hm-cell-tracking/sequences_A549/annotations/00000_bw.png')
+
+    # model = UpSampling2D(size=(4, 4))(model)
+    # model = Convolution2D(2, 1, 1)(model)

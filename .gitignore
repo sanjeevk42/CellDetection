@@ -1,5 +1,6 @@
 # python
 *.pyc
+*.ipynb
 *.egg-info/
 
 # general
