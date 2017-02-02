@@ -38,6 +38,8 @@ class DatasetGenerator(object):
             sample_idx = self.testing_idx
         elif dataset == 'validation':
             sample_idx = self.validation_idx
+        elif dataset == 'complete':
+            sample_idx = range(self.dataset_size)
         else:
             sample_idx = self.training_idx
         return sample_idx

@@ -1,6 +1,7 @@
 import abc
-import matplotlib.pyplot as plt
+import os
 
+import cv2
 import numpy as np
 
 from detection.dataset.fcn_mask_generator import FCNMaskGenerator
@@ -50,12 +51,15 @@ class FCNDetector(AbstractDetector):
         :param input_img: Input image compatible with model input shape.
         :return: Predicted response map.
         '''
-        model_input = np.expand_dims(input_img, axis=0)
+        norm_img = (input_img - input_img.mean()) / (input_img.std() + 1e-9)
+        model_input = np.expand_dims(norm_img, axis=0)
         model_output = self.model.predict(model_input)
         response_map = np.squeeze(model_output, axis=3)[0]
         return response_map
 
-    def predict_complete(self, image):
+
+
+    def predict_complete(self, image, step_size=(150, 150)):
         '''
         Predicts the response map for input of any size greater than model input shape. It devides image into
         multiple patches and takes maxima in overlapping regions.
@@ -63,7 +67,6 @@ class FCNDetector(AbstractDetector):
         :return: Full response map of image.
         '''
         patch_size = self.patch_size
-        step_size = (150, 150)
         image_shape = image.shape
         response_map = np.zeros([image_shape[0], image_shape[1]])
 
@@ -74,21 +77,16 @@ class FCNDetector(AbstractDetector):
         xy = [(i, j) for i in x for j in y]
         for i, j in xy:
             img_patch = image[i:i + patch_size[0], j:j + patch_size[1]]
-            img_patch = (img_patch - img_patch.mean()) / (img_patch.std() + 1e-9)
             out_map = self.predict_patch(img_patch)
             response_map[i:i + patch_size[0], j:j + patch_size[1]] = np.maximum(
                 response_map[i:i + patch_size[0], j:j + patch_size[1]], out_map)
 
         return response_map
 
-    def get_predictions(self, dataset):
-        frames = dataset.all_frames
+    def get_predictions(self, dataset, frame_idx, base_dir):
         total_predictions = total_annotations = total_matches = 0
-        # for idx in [104,47,84,61,135,212,28,120,196,180,48,162,73,112,60,202,32,175
-        #         ,216,204,223,36,132,117,239,75,34,111,193,89,203,123,178,127,35,248
-        #         ,87,158,110,194,91,187,145,51,16,58,21,49,64,68]:
-        #     frame = frames[idx]
-        for frame in frames:
+        for idx in frame_idx:
+            frame = dataset.all_frames[idx]
             response_map = self.predict_complete(frame.img_data)
             actual_annotations = np.array([(ann[0], ann[1]) for ann in frame.annotations])
             predicted_annotations = local_maxima(response_map, 20, 0.4)
@@ -100,21 +98,15 @@ class FCNDetector(AbstractDetector):
             total_matches += len(matches)
             total_predictions += len(predicted_annotations)
             false_pos = set(range(len(predicted_annotations))) - {match[0] for match in matches}
-            unmatched = set(range(len(actual_annotations))) - {match[1] for match in matches}
-            unmatched_annotations = [frame.annotations[idx] for idx in unmatched]
-            annotated_img = np.array(response_map)
-            bbox_size = (20, 20)
-            if len(false_pos) > 1:
-                # for ann in unmatched_annotations:
-                #     x, y, s = ann
-                #     cv2.rectangle(annotated_img, (x - bbox_size[0], y - bbox_size[1]),
-                #                   (x + bbox_size[0], y + bbox_size[1]),
-                #                   1, 2)
-                fp_annotations = [map(int, predicted_annotations[fp]) for fp in false_pos]
-                plt.figure(1), plt.imshow(response_map)
-                plt.figure(2), plt.imshow(frame.annotated_img())
-                plt.figure(3), plt.imshow(get_annotated_img(frame.img_data, fp_annotations, (15, 15)))
-                plt.show()
+            false_neg = set(range(len(actual_annotations))) - {match[1] for match in matches}
+            false_neg_ann = [frame.annotations[idx] for idx in false_neg]
+            false_pos_ann = [predicted_annotations[idx] for idx in false_pos]
+            predicted_img = get_annotated_img(frame.img_data, predicted_annotations, (15, 15))
+            false_neg_img = get_annotated_img(frame.img_data, false_neg_ann, (15, 15))
+            fals_pos_img = get_annotated_img(frame.img_data, false_pos_ann, (15, 15))
+            cv2.imwrite(os.path.join(base_dir, 'fn_{}'.format(frame.img_id)), false_neg_img)
+            cv2.imwrite(os.path.join(base_dir, 'fp_{}'.format(frame.img_id)), fals_pos_img)
+            cv2.imwrite(os.path.join(base_dir, 'prediction_{}'.format(frame.img_id)), predicted_img)
         logger.info('Total matches:{}, predictions:{}, actual:{}', total_matches, total_predictions, total_annotations)
         precision = total_matches * 1.0 / total_annotations
         recall = total_matches * 1.0 / total_predictions

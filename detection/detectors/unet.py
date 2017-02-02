@@ -1,11 +1,13 @@
+import cv2
 from keras.engine import Input
 from keras.engine import Model
 from keras.layers import Convolution2D, MaxPooling2D, Deconvolution2D, Dropout
 from keras.optimizers import Adam
 from keras.engine import merge
-
+import matplotlib.pyplot as plt
 from detection.dataset.image_dataset import ImageDataset
 from detection.detectors.fcn_detecter import FCNDetector
+from detection.utils.image_utils import local_maxima, get_annotated_img
 
 
 class UNet(FCNDetector):
@@ -77,24 +79,38 @@ class UNet(FCNDetector):
         optimizer = Adam(lr=self.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
         model.compile(optimizer=optimizer,
                       loss={'class_out': 'binary_crossentropy'}, metrics=['binary_accuracy'])
+        if self.weight_file:
+            model.load_weights(self.weight_file)
         model.summary()
         return model
 
 
 if __name__ == '__main__':
     batch_size = 1
-    detector = UNet([batch_size, 252, 252, 3], 1e-3, 1)
-
-    dataset = ImageDataset('/data/lrz/hm-cell-tracking/sequences_A549/annotations/', '0_bw.png', normalize=False)
-    training_args = {
-        'dataset': dataset,
-        'batch_size': batch_size,
-        'checkpoint_dir': '/data/cell_detection/test',
-        'samples_per_epoc': 4,
-        'nb_epocs': 500,
-        'testing_ratio': 0.2,
-        'validation_ratio': 0.1,
-        'nb_validation_samples': 6
-
-    }
-    detector.train(**training_args)
+    detector = UNet([batch_size, 252, 252, 3], 1e-3, 1, weight_file='../../weights/unet.hdf5')
+    img = cv2.imread('/data/lrz/hm-cell-tracking/sequences_150602_3T3/sample_01/cam0_0154.jpg')
+    response_map = detector.predict_complete(img)
+    plt.imshow(response_map)
+    plt.savefig('/data/lrz/hm-cell-tracking/sequences_150602_3T3/predictions_01/rmap_cam0_0154.jpg')
+    plt.close('all')
+    predicted_annotations = local_maxima(response_map, 20, 0.4)
+    ann_img = get_annotated_img(img, predicted_annotations, (15, 15))
+    plt.imshow(ann_img)
+    plt.savefig('/data/lrz/hm-cell-tracking/sequences_150602_3T3/predictions_01/cam0_0154.jpg')
+    plt.close('all')
+    # plt.imshow(response_map), plt.show()
+    #dataset = ImageDataset('/data/lrz/hm-cell-tracking/sequences_A549/annotations/', '0_bw.png', normalize=False)
+    # dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', '.jpg', normalize=False)
+    # training_args = {
+    #     'dataset': dataset,
+    #     'batch_size': batch_size,
+    #     'checkpoint_dir': '/data/cell_detection/test',
+    #     'samples_per_epoc': 4,
+    #     'nb_epocs': 500,
+    #     'testing_ratio': 0.2,
+    #     'validation_ratio': 0.1,
+    #     'nb_validation_samples': 6
+    #
+    # }
+    # detector.train(**training_args)
+    # detector.get_predictions(dataset, range(dataset.dataset_size), '/data/cell_detection/unet/predictions/')

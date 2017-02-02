@@ -9,7 +9,9 @@ from keras.optimizers import Adam
 
 from detection.dataset.image_dataset import ImageDataset
 from detection.detectors.fcn_detecter import FCNDetector
+from detection.detectors.unet import UNet
 from detection.models.resnet50 import ResNet50
+from detection.utils.image_utils import get_annotated_img, local_maxima
 from detection.utils.logger import logger
 
 
@@ -21,7 +23,7 @@ class FCNResnet50(FCNDetector):
         input_tensor = Input(batch_shape=self.input_shape)
         last_layer_name = 'activation_22'
 
-        base_model = ResNet50(include_top=False, input_tensor=input_tensor)
+        base_model = ResNet50(include_top=False, input_tensor=input_tensor, weights=None)
         base_model_out = base_model.get_layer(last_layer_name).output
 
         model = Model(input=base_model.input, output=base_model_out)
@@ -46,7 +48,7 @@ class FCNResnet50(FCNDetector):
             model.load_weights(self.weight_file)
 
         logger.info('Compiled fully conv with output:{}', model.output)
-        model.summary()
+        # model.summary()
         return model
 
 
@@ -90,20 +92,27 @@ def normalize(image, sigma_low=0, sigma_high=30):
     filtered = real(ifft2(fftimg))
     return filtered
 
+
+
 if __name__ == '__main__':
     batch_size = 1
-    weight_file = '/data/cell_detection/fcn_31_norm/model_checkpoints/model.hdf5'
+    weight_file = '../../weights/fcn_resnet.hdf5'
     detector = FCNResnet50([batch_size, 224, 224, 3], 1e-3, 1, weight_file)
-    # image = np.array(cv2.imread('/data/lrz/hm-cell-tracking/annotations/in/cam0_0314.jpg'),
-    #                  dtype=np.float64)
-    # # image = np.array(cv2.imread('/data/lrz/hm-cell-tracking/sequences_150602_3T3/sample_01/cam0_0001.jpg'), dtype=np.float64)
-    # response_map = detector.predict_complete(image)
-    # plt.figure(1), plt.imshow(response_map)
-    # plt.figure(2), plt.imshow(image)
-    # plt.show()
+
+    img = cv2.imread('/data/lrz/hm-cell-tracking/sequences_150602_3T3/sample_01/cam0_0154.jpg')
+    response_map = detector.predict_complete(img)
+    plt.imshow(response_map)
+    plt.show()
+    plt.savefig('/data/lrz/hm-cell-tracking/sequences_150602_3T3/predictions_fcn_01/rmap_cam0_0154.jpg')
+    plt.close('all')
+    predicted_annotations = local_maxima(response_map, 20, 0.4)
+    ann_img = get_annotated_img(img, predicted_annotations, (15, 15))
+    plt.imshow(ann_img)
+    plt.savefig('/data/lrz/hm-cell-tracking/sequences_150602_3T3/predictions_fcn_01/cam0_0154.jpg')
+    plt.close('all')
 
     # dataset = ImageDataset('/data/lrz/hm-cell-tracking/sequences_A549/annotations/', '00_bw.png', normalize=False)
-    dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', '.jpg', normalize=False)
+    # dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', '.jpg', normalize=False)
 
     # training_args = {
     #     'dataset': dataset,
@@ -117,6 +126,6 @@ if __name__ == '__main__':
     #
     # }
     # detector.train(**training_args)
-    detector.get_predictions(dataset)
+    # detector.get_predictions(dataset, range(dataset.dataset_size), '/data/cell_detection/fcn_31_norm/predictions/')
     # image = np.array(cv2.imread('/data/lrz/hm-cell-tracking/sequences_150602_3T3/sample_01/cam0_0001.jpg'), dtype=np.float64)
     # image -= (53, 53, 53)
