@@ -8,23 +8,23 @@
 '''
 from __future__ import print_function
 
-import numpy as np
+import os
 import warnings
 
-from keras.models import Model
-from keras.layers import Flatten, Dense, Input
-from keras.layers import Convolution2D, MaxPooling2D
-from keras.preprocessing import image
-from keras.utils.layer_utils import convert_all_kernels_in_model
-from keras.utils.data_utils import get_file
+import numpy as np
 from keras import backend as K
-from imagenet_utils import decode_predictions, preprocess_input
+from keras.layers import Convolution2D, MaxPooling2D
+from keras.layers import Flatten, Dense, Input
+from keras.models import Model
+from keras.preprocessing import image
+from keras.utils.data_utils import get_file
+from keras.utils.layer_utils import convert_all_kernels_in_model
 
-
-TH_WEIGHTS_PATH = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_th_dim_ordering_th_kernels.h5'
-TF_WEIGHTS_PATH = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels.h5'
-TH_WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_th_dim_ordering_th_kernels_notop.h5'
-TF_WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
+BASE_WEIGHT_DIR = '/data/model_weights/'
+TH_WEIGHTS_PATH = os.path.join(BASE_WEIGHT_DIR, 'vgg16_weights_th_dim_ordering_th_kernels.h5')
+TF_WEIGHTS_PATH = os.path.join(BASE_WEIGHT_DIR, 'vgg16_weights_tf_dim_ordering_tf_kernels.h5')
+TH_WEIGHTS_PATH_NO_TOP = os.path.join(BASE_WEIGHT_DIR, 'vgg16_weights_th_dim_ordering_th_kernels_notop.h5')
+TF_WEIGHTS_PATH_NO_TOP = os.path.join(BASE_WEIGHT_DIR, 'vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5')
 
 
 def VGG16(include_top=True, weights='imagenet',
@@ -118,38 +118,19 @@ def VGG16(include_top=True, weights='imagenet',
         print('K.image_dim_ordering:', K.image_dim_ordering())
         if K.image_dim_ordering() == 'th':
             if include_top:
-                weights_path = get_file('vgg16_weights_th_dim_ordering_th_kernels.h5',
-                                        TH_WEIGHTS_PATH,
-                                        cache_subdir='models')
+                model.load_weights(TH_WEIGHTS_PATH)
             else:
-                weights_path = get_file('vgg16_weights_th_dim_ordering_th_kernels_notop.h5',
-                                        TH_WEIGHTS_PATH_NO_TOP,
-                                        cache_subdir='models')
-            model.load_weights(weights_path)
+                model.load_weights(TF_WEIGHTS_PATH_NO_TOP)
             if K.backend() == 'tensorflow':
-                warnings.warn('You are using the TensorFlow backend, yet you '
-                              'are using the Theano '
-                              'image dimension ordering convention '
-                              '(`image_dim_ordering="th"`). '
-                              'For best performance, set '
-                              '`image_dim_ordering="tf"` in '
-                              'your Keras config '
-                              'at ~/.keras/keras.json.')
                 convert_all_kernels_in_model(model)
         else:
             if include_top:
-                weights_path = get_file('vgg16_weights_tf_dim_ordering_tf_kernels.h5',
-                                        TF_WEIGHTS_PATH,
-                                        cache_subdir='models')
+                model.load_weights(TF_WEIGHTS_PATH, by_name=True)
             else:
-                weights_path = get_file('vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5',
-                                        TF_WEIGHTS_PATH_NO_TOP,
-                                        cache_subdir='models')
-            model.load_weights(weights_path)
+                model.load_weights(TF_WEIGHTS_PATH_NO_TOP, by_name=True)
             if K.backend() == 'theano':
                 convert_all_kernels_in_model(model)
     return model
-
 
 if __name__ == '__main__':
     model = VGG16(include_top=True, weights='imagenet')
@@ -158,8 +139,6 @@ if __name__ == '__main__':
     img = image.load_img(img_path, target_size=(224, 224))
     x = image.img_to_array(img)
     x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
     print('Input image shape:', x.shape)
 
     preds = model.predict(x)
-    print('Predicted:', decode_predictions(preds))
