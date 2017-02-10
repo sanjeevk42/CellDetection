@@ -153,6 +153,12 @@ def filename_to_id(filename):
             continue
     return idx
 
+def normalize(img):
+    min_i = np.min(img)
+    max_i = np.max(img)
+    img = (img - min_i) / (max_i - min_i)
+    img = img * 255
+    return img
 
 if __name__ == '__main__':
     print(filename_to_id('cam0_0089.jpg'))

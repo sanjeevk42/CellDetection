@@ -21,7 +21,7 @@ class FCNVGG16(FCNDetector):
 
     def build_model(self):
         input = Input(batch_shape=self.input_shape, name='input_1')
-        base_model = VGG16(include_top=False, input_tensor=input)
+        base_model = VGG16(input_tensor=input)
         last_layer_name = 'block3_pool'
         base_model_out = base_model.get_layer(last_layer_name).output
 
@@ -44,6 +44,7 @@ class FCNVGG16(FCNDetector):
 
         if self.weight_file:
             logger.info('Loading weights from :{}', self.weight_file)
+            model.load_weights(weight_file)
 
         model.summary()
         return model
@@ -65,13 +66,21 @@ def start_training():
 
     }
     detector.train(**training_args)
-if __name__ == '__main__':
 
+def calculate_score():
     batch_size = 1
-    weight_file = '/data/cell_detection/test/model_checkpoints/model.hdf5'
+    weight_file = None#'/data/cell_detection/fcn_vgg/model_checkpoints/model.hdf5'
+    detector = FCNVGG16([batch_size, 224, 224, 3], 1e-3, 1, weight_file)
+    dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', '.jpg', normalize=False)
+    detector.get_predictions(dataset, range(dataset.dataset_size), '/data/cell_detection/fcn_31_norm/predictions/')
+
+if __name__ == '__main__':
+    # calculate_score()
+    batch_size = 1
+    weight_file = '/data/cell_detection/old/fcn_vgg/model_checkpoints/model.hdf5'
     detector = FCNVGG16([batch_size, 224, 224, 3], 1e-3, 1, weight_file)
 
-    img = cv2.imread('/data/lrz/hm-cell-tracking/sequences_150602_3T3/sample_01/cam0_0154.jpg')
+    img = cv2.imread('/data/lrz/hm-cell-tracking/sequences_A549/annotations/00362_bw.png')
     response_map = detector.predict_complete(img)
     plt.figure(1), plt.imshow(response_map)
     plt.figure(2), plt.imshow(img)

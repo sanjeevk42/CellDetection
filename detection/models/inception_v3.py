@@ -27,7 +27,7 @@ from keras.preprocessing import image
 from keras.utils.layer_utils import convert_all_kernels_in_model
 from keras.utils.data_utils import get_file
 from keras import backend as K
-from imagenet_utils import decode_predictions
+# from imagenet_utils import decode_predictions
 
 
 TH_WEIGHTS_PATH = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.2/inception_v3_weights_th_dim_ordering_th_kernels.h5'
@@ -324,4 +324,4 @@ if __name__ == '__main__':
     x = preprocess_input(x)
 
     preds = model.predict(x)
-    print('Predicted:', decode_predictions(preds))
+    # print('Predicted:', decode_predictions(preds))

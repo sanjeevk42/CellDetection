@@ -7,16 +7,8 @@ import numpy as np
 
 from detection.detectors.fcn_resnet import FCNResnet50
 from detection.detectors.unet import UNet
+from detection.utils.image_utils import normalize
 from detection.utils.logger import logger
-
-
-def normalize(img):
-    min_i = np.min(img)
-    max_i = np.max(img)
-    img = (img - min_i) / (max_i - min_i)
-    img = img * 255
-    return img
-
 
 @click.command()
 @click.argument("model", 'Name of model to use. e.g. resnet or unet')

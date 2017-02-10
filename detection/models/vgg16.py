@@ -19,6 +19,7 @@ from keras.models import Model
 from keras.preprocessing import image
 from keras.utils.data_utils import get_file
 from keras.utils.layer_utils import convert_all_kernels_in_model
+import matplotlib.pyplot as plt
 
 BASE_WEIGHT_DIR = '/data/model_weights/'
 TH_WEIGHTS_PATH = os.path.join(BASE_WEIGHT_DIR, 'vgg16_weights_th_dim_ordering_th_kernels.h5')
