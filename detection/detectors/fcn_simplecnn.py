@@ -40,11 +40,11 @@ class FCNSimpleCNN(FCNDetector):
         x = MaxPooling2D((2, 2), strides=(2, 2), name='maxpool3')(x)
         x = Dropout(0.6)(x)
 
-        x = Convolution2D(64, 5, 5, border_mode='same', name='conv4')(x)
-        x = BatchNormalization(axis=3)(x)
-        x = Activation('relu')(x)
-        x = MaxPooling2D((2, 2), strides=(2, 2), name='maxpool4')(x)
-        x = Dropout(0.6)(x)
+        # x = Convolution2D(64, 5, 5, border_mode='same', name='conv4')(x)
+        # x = BatchNormalization(axis=3)(x)
+        # x = Activation('relu')(x)
+        # x = MaxPooling2D((2, 2), strides=(2, 2), name='maxpool4')(x)
+        # x = Dropout(0.6)(x)
 
         x = Convolution2D(64, 1, 1, border_mode='same', activation='relu', name='conv5')(x)
         x = Dropout(0.5)(x)
@@ -56,6 +56,8 @@ class FCNSimpleCNN(FCNDetector):
         optimizer = Adam(lr=self.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
         model.compile(optimizer=optimizer,
                       loss={'class_out': 'binary_crossentropy'}, metrics=['binary_accuracy'])
+        if self.weight_file:
+            model.load_weights(self.weight_file)
         model.summary()
         return model
 
@@ -80,12 +82,12 @@ def start_training():
 
 def calculate_score():
     batch_size = 1
-    weight_file = '/data/cell_detection/resnet_random/model_checkpoints/model.hdf5'
+    weight_file = '/data/cell_detection/simple_cnn/model_checkpoints/model.hdf5'
     detector = FCNSimpleCNN([batch_size, 224, 224, 3], 1e-3, 1, weight_file)
     dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', '.jpg', normalize=False)
     detector.get_predictions(dataset, range(dataset.dataset_size), '/data/cell_detection/fcn_31_norm/predictions/')
 
 
 if __name__ == '__main__':
-    start_training()
+    # start_training()
     calculate_score()
