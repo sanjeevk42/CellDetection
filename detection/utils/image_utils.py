@@ -53,6 +53,13 @@ def get_annotated_img(img, annotations, bbox_size, color=(255, 0, 0)):
     return annotated_img
 
 
+def draw_bboxes(img, bboxes):
+    annotated_img = np.array(img)
+    for bbox in bboxes:
+        cv2.rectangle(annotated_img, (bbox[1], bbox[0]),(bbox[3], bbox[2]), [0, 255, 0], 2)
+    return annotated_img
+
+
 def get_bbox(annotation, bbox):
     x, y, s = annotation
     return x - bbox[0], y - bbox[1], x + bbox[0], y + bbox[1]
@@ -79,12 +86,11 @@ def feature_to_annotations(input_img, label_map, bbox_map):
     for i in range(label_map.shape[0]):
         for j in range(label_map.shape[1]):
             grid_center = grid_size * (i, j) + grid_size / 2
-            if label_map[i][j] > 0 and area():
+            if label_map[i][j] > 0.8:
                 x, y, s = grid_center[0], grid_center[1], label_map[i][j]
                 bbox_loc = bbox_map[i][j]
                 bbox_loc_abs = map(int, tuple(bbox_loc + np.concatenate([grid_center, grid_center])))
-                if area(bbox_loc_abs) > 100:
-                    annotations.append((x, y) + tuple(bbox_loc_abs))
+                annotations.append(tuple(bbox_loc_abs))
     return annotations
 
 
@@ -153,12 +159,14 @@ def filename_to_id(filename):
             continue
     return idx
 
+
 def normalize(img):
     min_i = np.min(img)
     max_i = np.max(img)
     img = (img - min_i) / (max_i - min_i)
     img = img * 255
     return img
+
 
 if __name__ == '__main__':
     print(filename_to_id('cam0_0089.jpg'))

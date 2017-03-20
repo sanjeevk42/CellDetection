@@ -1,41 +1,35 @@
 from keras.engine import Model
-from keras.layers import Dense, Flatten, Reshape, Dropout
+from keras.layers import Convolution2D
 from keras.optimizers import Adam
 
 from detection.dataset.image_dataset import ImageDataset
+from detection.detectors.bbox_detecter import BBoxDetector
 from detection.detectors.model_optimization import start_training
 from detection.models.resnet50 import ResNet50
 from detection.utils.logger import logger
 
 
-class YoloDetector(object):
+class YoloDetector(BBoxDetector):
     '''
     YOLO detector on resnet50.
     '''
 
-    def __init__(self, base_model_fn, last_layer_name):
-        self.base_model_fn = base_model_fn
-        self.last_layer_name = last_layer_name
-        self.base_model = self.base_model_fn(include_top=True)
+    def __init__(self, input_shape, no_classes, grid_size, weight_file=None):
+        super(YoloDetector, self).__init__(input_shape, no_classes, grid_size, weight_file)
 
-    def fully_connected(self, nb_objects):
+    def build_model(self):
         '''
         The top layers after base model are fully connected.
         '''
-        model = Model(input=self.base_model.input, output=self.base_model.get_layer(self.last_layer_name).output)
-        model = Flatten()(model.output)
-        model = Dense(256, activation='relu')(model)
-        model = Dropout(.7)(model)
+        last_layer_name = 'activation_11'
+        base_model = ResNet50(input_tensor=self.input_shape)
+        base_model_out = base_model.get_layer(last_layer_name).output
+        model = Model(input=base_model.input, output=base_model_out)
+        class_out = Convolution2D(self.no_classes, 1, 1, border_mode='same', activation='sigmoid')(model)
 
-        model = Dense(2048, activation='relu')(model)
+        bb_out = Convolution2D(4, 1, 1, border_mode='same')(model)
 
-        class_out = Dense(7 * 7 * nb_objects, name='fc_class', activation='sigmoid')(model)
-        class_out = Reshape((7, 7, nb_objects), name='class_out')(class_out)
-
-        bb_out = Dense(7 * 7 * 5 * nb_objects, name='fc_bb', activation='linear')(model)
-        bb_out = Reshape((7, 7, nb_objects, 5), name='bb_out')(bb_out)
-
-        model = Model(self.base_model.input, output=[class_out, bb_out])
+        model = Model(base_model.input, output=[class_out, bb_out])
 
         optimizer = Adam(lr=1e-5, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
 
@@ -56,7 +50,7 @@ if __name__ == '__main__':
     grid_size = (32, 32)
 
     detector = YoloDetector(ResNet50, 'activation_48')
-    model = detector.fully_connected(nb_objects)
+    model = detector.build_model(nb_objects)
 
     dataset = ImageDataset(dataset_dir)
     dataset_generator = dataset.grid_patch_dataset_generator(batch_size, patch_size, grid_size=grid_size,

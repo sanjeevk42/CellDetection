@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 
+import cv2
 import numpy as np
 
 from detection.dataset.dataset_generator import DatasetGenerator
@@ -27,19 +28,24 @@ class GridDatasetGenerator(DatasetGenerator):
         for idx in sample_idx:
             frame = self.all_frames[idx]
             if sampling_type == 'random':
-                all_patches.extend(frame.get_random_patches(patch_size))
+                all_patches.extend(frame.get_random_patches(patch_size, 1))
             else:
                 all_patches.extend(frame.sequential_patches(patch_size, (200, 200)))
         logger.info('Total patches:{}', len(all_patches))
         while True:
             # Randomly select patches from sequential patches ...
-            patches_idx = np.random.randint(0, len(all_patches), batch_size)
+            patches_idx = np.random.randint(0, len(sample_idx), batch_size)
             class_batch = []
             bbout_batch = []
             input_batch = []
             for idx in patches_idx:
-                patch = all_patches[idx]
+                frame = self.all_frames[sample_idx[idx]]
+                # patch = frame.get_random_patches(patch_size, 1)[0]
+                patch = frame.sequential_patches(patch_size, (200, 200))[0]
                 label_map, bbox_map = self.grid_ground_truth(patch, grid_size)
+                # plt.figure(1), plt.imshow(np.squeeze(label_map))
+                # plt.figure(2), plt.imshow(patch.annotated_img())
+                # plt.show()
                 class_batch.append(label_map)
                 bbout_batch.append(bbox_map)
                 input_batch.append(patch.get_img())
@@ -55,7 +61,7 @@ class GridDatasetGenerator(DatasetGenerator):
         patch_size = np.array(patch.patch_size)
         response_map_shape = list(patch_size / grid_size)
         bbox_map_shape = response_map_shape + [4]
-        bbox_map = np.zeros(bbox_map_shape)
+        bbox_map = np.zeros(bbox_map_shape, dtype=np.int32)
         label_map = np.zeros(response_map_shape + [1])
 
         bbox_size = patch.frame_info.bbox
@@ -66,15 +72,16 @@ class GridDatasetGenerator(DatasetGenerator):
                 best_annotation_idx = -1
                 max_intersection = 0
                 for idx, ann in enumerate(patch.annotations):
-                    x, y, s = ann
+                    y, x, s = ann
                     ann_bound = (x - bbox_size[0], y - bbox_size[1], x + bbox_size[0], y + bbox_size[1])
                     intersection = image_utils.intersection(grid_bound, ann_bound)
                     if intersection > max_intersection:
                         max_intersection = intersection
                         best_annotation_idx = idx
+
                 if best_annotation_idx > 0:
                     grid_center = grid_index + np.array(grid_size) / 2
-                    x, y, s = patch.annotations[best_annotation_idx]
+                    y, x, s = patch.annotations[best_annotation_idx]
                     ann_bound = np.array((x - bbox_size[0], y - bbox_size[1], x + bbox_size[0], y + bbox_size[1]))
                     ann_bound_norm = ann_bound - np.concatenate([grid_center, grid_center])
                     label_map[i][j] = 1  # currenly only binary segmentation is being done ...
@@ -143,12 +150,16 @@ class GridDatasetGenerator(DatasetGenerator):
 
 
 if __name__ == '__main__':
-    dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', '40.jpg')
-    fcn_mask_gen = GridDatasetGenerator(dataset, 0.2, 0.1).grid_patch_dataset_generator(1, (224, 224), (28, 28), 5)
+    dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', 'cam0_0001.jpg')
+    fcn_mask_gen = GridDatasetGenerator(dataset, 0, 0).grid_dataset_generator(1, (224, 224), (14, 14))
     for data in fcn_mask_gen:
         input, output = data
-        input_img = input['input_1']
-        plt.figure(1), plt.imshow(input_img.squeeze(axis=0))
-        plt.show()
+        input_img = np.squeeze(input['input_1'], axis=0)
+        plt.figure(1), plt.imshow(input_img)
         class_score, bb_score = output['class_out'], output['bb_out']
+        annotations = image_utils.feature_to_annotations(input_img, np.squeeze(class_score), np.squeeze(bb_score))
+        ann_img = image_utils.draw_bboxes(input_img, annotations)
+        plt.figure(2), plt.imshow(ann_img)
+        plt.figure(3), plt.imshow(np.squeeze(class_score))
+        plt.show()
         print(class_score, bb_score)
