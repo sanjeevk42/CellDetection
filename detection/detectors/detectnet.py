@@ -104,9 +104,11 @@ class Detectnet(BBoxDetector):
         return precision, recall, f1
 
 
-# Usage: python -m detection.detectors.detectnet start-training 1 '/data/cell_detection/test'
-# '/data/lrz/hm-cell-tracking/sequences_A549/annotations/'
 def start_training(batch_size, checkpoint_dir, dataset_dir, file_ext='.png', weight_file=None):
+    """
+    Usage: python -m detection.detectors.detectnet start-training 1 '/data/cell_detection/test' \
+            '/data/lrz/hm-cell-tracking/sequences_A549/annotations/'
+    """
     no_classes = 1
     grid_size = (16, 16)
     detector = Detectnet([batch_size, 224, 224, 3], no_classes, grid_size, weight_file)
@@ -126,9 +128,16 @@ def start_training(batch_size, checkpoint_dir, dataset_dir, file_ext='.png', wei
     detector.train(**training_args)
 
 
-#python -m detection.detectors.detectnet evaluate-model '/data/lrz/hm-cell-tracking/annotations/in/'
-#  '/data/cell_detection/detectnet/model_checkpoints/model.hdf5' --file-ext '.jpg'
 def evaluate_model(dataset_dir, weight_file, file_ext='.png'):
+    """
+    Evaluates model using all images from dataset_dir.
+    Usage: python -m detection.detectors.detectnet evaluate-model '/data/lrz/hm-cell-tracking/annotations/in/' \
+    '/data/training/detectnet/model_checkpoints/model.hdf5' --file-ext '.jpg'
+    :param dataset_dir:
+    :param weight_file:
+    :param file_ext:
+    :return:
+    """
     batch_size = 1
     no_classes = 1
     grid_size = (16, 16)
