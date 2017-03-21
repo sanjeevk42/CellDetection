@@ -1,7 +1,5 @@
-import matplotlib.pyplot as plt
-import os
-
 import numpy as np
+from fire import Fire
 from keras.engine import Input
 from keras.engine import Model
 from keras.layers import Convolution2D, Dropout
@@ -12,6 +10,7 @@ from detection.dataset.image_dataset import ImageDataset
 from detection.detectors.bbox_detecter import BBoxDetector
 from detection.models.resnet50 import ResNet50
 from detection.utils import image_utils
+from detection.utils import metric_utils
 from detection.utils.logger import logger
 
 
@@ -22,7 +21,7 @@ class Detectnet(BBoxDetector):
     '''
 
     def __init__(self, input_shape, no_classes, grid_size, weight_file=None):
-        super(Detectnet, self).__init__(input_shape, no_classes, grid_size, weight_file=None)
+        super(Detectnet, self).__init__(input_shape, no_classes, grid_size, weight_file)
 
     def build_model(self):
         '''
@@ -48,7 +47,7 @@ class Detectnet(BBoxDetector):
         model.compile(optimizer=optimizer,
                       loss={'class_out': 'binary_crossentropy', 'bb_out': 'mean_absolute_error'})
         logger.info('Compiled fc with output:{}', model.output)
-        model.summary()
+        # model.summary()
         return model
 
     def _get_data_generator(self, dataset, testing_ratio, validation_ratio):
@@ -57,34 +56,88 @@ class Detectnet(BBoxDetector):
         '''
         return GridDatasetGenerator(dataset, testing_ratio, validation_ratio)
 
+    def predict_complete(self, image, step_size=(200, 200)):
+        '''
+        Predicts the response map for input of any size greater than model input shape. It devides image into
+        multiple patches and takes maxima in overlapping regions.
+        :param image: Input image of any shape
+        :return: Full response map of image.
+        '''
+        patch_size = self.model.input_shape[1:3]
+        image_shape = image.shape
+
+        x = range(0, image_shape[0] - patch_size[0], step_size[0])
+        y = range(0, image_shape[1] - patch_size[1], step_size[1])
+        x.append(image_shape[0] - patch_size[0])
+        y.append(image_shape[1] - patch_size[1])
+        xy = [(i, j) for i in x for j in y]
+        all_annotations = []
+        for i, j in xy:
+            img_patch = image[i:i + patch_size[0], j:j + patch_size[1]]
+            model_input = np.expand_dims(img_patch, axis=0)
+            class_score, bb_score = self.model.predict(model_input)
+            annotations = image_utils.feature_to_annotations(img_patch, np.squeeze(class_score), np.squeeze(bb_score))
+            annotations = [(ann[1] + j, ann[0] + i, ann[3] + j, ann[2] + i) for ann in annotations]
+            all_annotations.extend(annotations)
+        return all_annotations
+
+    def evaluate_dataset(self, image_dataset, frame_ids):
+        total_predictions = total_annotations = total_matches = 0
+        for idx in frame_ids:
+            frame = image_dataset.all_frames[idx]
+            predicted_bboxes = self.predict_complete(frame.img_data)
+            predicted_bboxes = image_utils.group_bboxes(predicted_bboxes)
+            predicted_annotations = [image_utils.get_cell_center(r) for r in predicted_bboxes]
+            gt_annotations = [(ann[0], ann[1]) for ann in frame.annotations]
+            matches = metric_utils.get_matches(predicted_annotations, gt_annotations)
+            total_matches += len(matches)
+            total_predictions += len(predicted_annotations)
+            total_annotations += len(gt_annotations)
+            recall_f, precision_f, f1_f = metric_utils.score_detections(predicted_annotations, frame.annotations,
+                                                                        matches)
+            logger.info('Processed frame:{}, precision:{}, recall:{}, f1:{}', frame.img_id, precision_f, recall_f, f1_f)
+            #         plt.imshow(image_utils.get_annotated_img(frame.img_data, predicted_annotations,(15,15)))
+            #         plt.show()
+        precision = total_matches * 1.0 / total_predictions
+        recall = total_matches * 1.0 / total_annotations
+        f1 = 2 * precision * recall / (precision + recall)
+        return precision, recall, f1
+
+
+# Usage: python -m detection.detectors.detectnet start-training 1 '/data/cell_detection/test'
+# '/data/lrz/hm-cell-tracking/sequences_A549/annotations/'
+def start_training(batch_size, checkpoint_dir, dataset_dir, file_ext='.png', weight_file=None):
+    no_classes = 1
+    grid_size = (16, 16)
+    detector = Detectnet([batch_size, 224, 224, 3], no_classes, grid_size, weight_file)
+    dataset = ImageDataset(dataset_dir, file_ext, normalize=False)
+
+    training_args = {
+        'dataset': dataset,
+        'batch_size': batch_size,
+        'checkpoint_dir': checkpoint_dir,
+        'samples_per_epoc': 1,
+        'nb_epocs': 500,
+        'testing_ratio': 0.2,
+        'validation_ratio': 0.1,
+        'nb_validation_samples': 2
+
+    }
+    detector.train(**training_args)
+
+
+#python -m detection.detectors.detectnet evaluate-model '/data/lrz/hm-cell-tracking/annotations/in/'
+#  '/data/cell_detection/detectnet/model_checkpoints/model.hdf5' --file-ext '.jpg'
+def evaluate_model(dataset_dir, weight_file, file_ext='.png'):
+    batch_size = 1
+    no_classes = 1
+    grid_size = (16, 16)
+    detector = Detectnet([batch_size, 224, 224, 3], no_classes, grid_size, weight_file)
+
+    dataset = ImageDataset(dataset_dir, file_ext, normalize=False)
+    precision, recall, f1 = detector.evaluate_dataset(dataset, range(len(dataset.all_frames)))
+    logger.info("Precision:{}, recall:{}, f1:{}", precision, recall, f1)
+
 
 if __name__ == '__main__':
-    dataset_dir = '/data/lrz/hm-cell-tracking/annotations/in'
-    checkpoint_dir = '/data/training/detectnet'
-    out_dir = os.path.join(checkpoint_dir, 'out')
-    batch_size = 1
-    samples_per_epoc = 1
-    nb_epocs = 500
-    nb_validation_samples = 1
-    patch_size = (224, 224)
-    grid_size = (16, 16)
-    no_classes = 1
-    weight_file = '/data/training/detectnet/model_checkpoints/model.hdf5'
-    detector = Detectnet([batch_size, 224, 224, 3], no_classes, grid_size, weight_file)  # activation_48
-    image_dataset = ImageDataset(dataset_dir, 'cam0_0001.jpg', normalize=False)
-    detector.train(image_dataset, batch_size, checkpoint_dir, samples_per_epoc, nb_epocs, 0, 0.1,
-                   nb_validation_samples)
-    # model.load_weights('/data/cell_detection/fcn_deconv_seq1_norm/model_checkpoints/model.hdf5', by_name=False)
-
-    # patch = image_dataset.all_frames[0].sequential_patches(patch_size, (200, 200))[0]
-    # class_score, bb_score = detector.model.predict(np.expand_dims(patch.get_img(), axis=0))
-    # class_score = np.squeeze(class_score)
-    # bb_score = np.squeeze(bb_score)
-    # annotations = image_utils.feature_to_annotations(patch.get_img(), np.squeeze(class_score), np.squeeze(bb_score))
-    # ann_img = image_utils.draw_bboxes(patch.get_img(), annotations)
-    # plt.figure(2), plt.imshow(ann_img)
-    # plt.figure(3), plt.imshow(np.squeeze(class_score))
-    # plt.show()
-    # detector.train(image_dataset, batch_size, checkpoint_dir, samples_per_epoc, nb_epocs, 0, 0.5,
-    #                nb_validation_samples)
-    # output_writer = OutputWriter(image_dataset, out_dir, patch_size, (220, 220))
+    Fire({'evaluate-model': evaluate_model, 'start-training': start_training})

@@ -56,7 +56,7 @@ def get_annotated_img(img, annotations, bbox_size, color=(255, 0, 0)):
 def draw_bboxes(img, bboxes):
     annotated_img = np.array(img)
     for bbox in bboxes:
-        cv2.rectangle(annotated_img, (bbox[1], bbox[0]),(bbox[3], bbox[2]), [0, 255, 0], 2)
+        cv2.rectangle(annotated_img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), [0, 255, 0], 2)
     return annotated_img
 
 
@@ -75,7 +75,7 @@ def area(bound):
     return r.area()
 
 
-def feature_to_annotations(input_img, label_map, bbox_map):
+def feature_to_annotations(input_img, label_map, bbox_map, threshold=0.6):
     '''
     Converts grid based predictions to image co-ordinates.
     '''
@@ -86,7 +86,7 @@ def feature_to_annotations(input_img, label_map, bbox_map):
     for i in range(label_map.shape[0]):
         for j in range(label_map.shape[1]):
             grid_center = grid_size * (i, j) + grid_size / 2
-            if label_map[i][j] > 0.8:
+            if label_map[i][j] > threshold:
                 x, y, s = grid_center[0], grid_center[1], label_map[i][j]
                 bbox_loc = bbox_map[i][j]
                 bbox_loc_abs = map(int, tuple(bbox_loc + np.concatenate([grid_center, grid_center])))
@@ -112,10 +112,6 @@ def draw_prediction(input_img, labels, bboxes):
             pass
             # cv2.rectangle(ann_img, (minx, miny), (maxx, maxy), (255, 0, 0), 2)
     return ann_img
-
-
-def grid_patch_to_annoations(input_img, label_map, bbox_map):
-    img_shape = input_img.shape
 
 
 def gaussian_kernel(filter_size, sigma, mean):
@@ -167,6 +163,21 @@ def normalize(img):
     img = img * 255
     return img
 
+
+def get_rectangle_area(rectangle):
+    x1, y1, x2, y2 = rectangle
+    area = abs(x2-x1) * abs(y2-y1)
+    return area
+
+def get_cell_center(rectangle):
+    x1, y1, x2, y2 = rectangle
+    return int((x1+x2)/2), int((y1+y2)/2)
+
+def group_bboxes(bboxes):
+    grouped_rectangles = cv2.groupRectangles(bboxes, 1, eps=0.05)[0]
+    # remove rectangles with small area
+    grouped_rectangles = [r for r in grouped_rectangles if get_rectangle_area(r) > 200]
+    return grouped_rectangles
 
 if __name__ == '__main__':
     print(filename_to_id('cam0_0089.jpg'))

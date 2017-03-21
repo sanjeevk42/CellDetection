@@ -1,6 +1,7 @@
 import abc
 
 from detection.detectors.model_optimization import start_training
+from detection.utils.logger import logger
 
 
 class BBoxDetector(object):
@@ -16,6 +17,9 @@ class BBoxDetector(object):
         self.grid_size = grid_size
         self.weight_file = weight_file
         self.model = self.build_model()
+        if self.weight_file:
+            self.model.load_weights(self.weight_file)
+            logger.info('Loaded model weights from:{}', self.weight_file)
 
     @abc.abstractmethod
     def build_model(self):
@@ -42,7 +46,7 @@ class BBoxDetector(object):
         generator = self._get_data_generator(dataset, testing_ratio, validation_ratio)
         dataset_generator = generator.grid_dataset_generator(batch_size, patch_size, self.grid_size)
         validation_generator = generator.grid_dataset_generator(batch_size, patch_size, self.grid_size,
-                                                            dataset='validation')
+                                                                dataset='validation')
         start_training(checkpoint_dir, self.model, dataset_generator, samples_per_epoc, nb_epocs,
                        callbacks=[], validation_generator=validation_generator,
                        nb_val_samples=nb_validation_samples)
