@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 
 import cv2
 import numpy as np
+from scipy.ndimage import interpolation
 
 from detection.dataset.dataset_generator import DatasetGenerator
 from detection.dataset.image_dataset import ImageDataset
@@ -150,8 +151,8 @@ class GridDatasetGenerator(DatasetGenerator):
 
 
 if __name__ == '__main__':
-    dataset = ImageDataset('/data/lrz/hm-cell-tracking/annotations/in', 'cam0_0001.jpg')
-    fcn_mask_gen = GridDatasetGenerator(dataset, 0, 0).grid_dataset_generator(1, (224, 224), (14, 14))
+    dataset = ImageDataset('/data/lrz/hm-cell-tracking/sequences_A549/annotations/', '.png')
+    fcn_mask_gen = GridDatasetGenerator(dataset, 0, 0).grid_dataset_generator(1, (512, 512), (16, 16))
     for data in fcn_mask_gen:
         input, output = data
         input_img = np.squeeze(input['input_1'], axis=0)
@@ -161,5 +162,16 @@ if __name__ == '__main__':
         ann_img = image_utils.draw_bboxes(input_img, annotations)
         plt.figure(2), plt.imshow(ann_img)
         plt.figure(3), plt.imshow(np.squeeze(class_score))
-        plt.show()
+        zoom_class_score = interpolation.zoom(np.squeeze(image_utils.normalize(class_score)), (16, 16))
+
+        zoom_class_score = np.repeat(np.expand_dims(zoom_class_score, axis=-1).astype(np.float32), 3, axis=-1)
+        c = np.array((1, 0, 0), dtype=np.float32)
+        zoom_class_score = zoom_class_score * c.reshape(1,1,3)
+        out1 = cv2.addWeighted(input_img, 0.5, zoom_class_score, 0.5, 0)
+        for i in range(32):
+            out1 = cv2.line(out1, (16*i, 0), (16*i, 511), (0,0, 255), 1)
+            out1 = cv2.line(out1, (0, 16*i), (511, 16 * i), (0, 0, 255), 1)
+        cv2.imwrite('/home/sanjeev/overlay.jpg', out1[:300,:300])
+        cv2.imwrite('/home/sanjeev/original.jpg', input_img[:300,:300])
+        # plt.show()
         print(class_score, bb_score)

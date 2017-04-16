@@ -27,6 +27,7 @@ class FrameInfo():
         self.roi = roi[0] - bbox[0], roi[1] + bbox[0], roi[2] - bbox[1], roi[3] + bbox[1]
         self.bbox = bbox
         self.full_img = np.array(cv2.imread(os.path.join(self.base_dir, self.img_id)), dtype=np.float32)
+        # self.full_img = cv2.imread(os.path.join(self.base_dir, self.img_id))
         self.img_data = self.full_img[self.roi[2]: self.roi[3], self.roi[0]: self.roi[1]]
         # normalize annotations for cropped image...
         self.annotations = [(ann[0] - self.roi[0], ann[1] - self.roi[2], ann[2]) for ann in annotations]
@@ -204,7 +205,7 @@ class ImageDataset(object):
 
     def normalize_frames(self):
         for frame in self.all_frames:
-            frame.img_data -= frame.img_data.mean()/ (frame.img_data.std()+1e-8)
+            frame.img_data -= frame.img_data.mean() / (frame.img_data.std() + 1e-8)
         logger.info('Normalized frames with channel mean')
 
     def save_all_annotated(self, out_dir):
@@ -225,91 +226,5 @@ class ImageDataset(object):
         pca.fit(np.array(pixel_vectors))
         cov = pca.get_covariance()
         print('Cov', cov)
-        w, v  = np.linalg.eig(cov)
-        print(w,v)
-
-
-if __name__ == '__main__':
-    # frame = cv2.imread('/data/lrz/hm-cell-tracking/annotations/in/cam0_0026.jpg')
-    # pixel_vector = np.reshape(frame, [frame.shape[0] * frame.shape[1], frame.shape[2]])
-    # pca = PCA(n_components=3)
-    # out = pca.fit(np.array(pixel_vector))
-    # cov = out.get_covariance()
-    # print np.linalg.eig(cov)
-    dataset_gen = ImageDataset('/data/lrz/hm-cell-tracking/sequences_150602_3T3/sample_01', '.jpg', normalize=True)
-
-    # dataset_gen.pixel_pca()
-    # patches = dataset_gen.all_frames[0].sequential_patches((224, 224), (200, 200))
-    # plt.figure(0), plt.imshow(patches[0].get_img())
-    # plt.figure(1), plt.imshow(patches[0].annotated_img())
-    # plt.figure(2), plt.imshow(np.squeeze(patches[0].ann_mask(1)))
-    #
-    # plt.show()
-    # dataset_gen.save_all_annotated('/data/cell_detection/mean_imgs')
-    # frame = dataset_gen.all_frames[1]
-    # patches = frame.sequential_patches((224, 224), (200,200))
-    # patch = patches[0]
-    # mask = patch.binary_mask()
-    # plt.figure(1)
-    # plt.imshow(patch.ann_patch())
-    # plt.figure(2)
-    # plt.imshow(np.squeeze(mask))
-    # plt.show()
-    # avg_img = dataset_gen.per_pixel_mean()
-    # frame = dataset_gen.all_frames[0]
-    # patches = frame.get_random_patches((224, 224), 10)
-    # for batch in dataset_gen.fcn_data_generator(5, (224, 224), 2):
-    #     for i in range(len(batch[0]['input_1'])):
-    #         patch_mask = batch[1]['class_out'][i]
-    #         print(patch_mask.shape)
-    #         plt.figure(1)
-    #         plt.imshow(batch[0]['input_1'][i])
-    #         for j in range(1):
-    #             plt.figure(j + 2)
-    #             plt.imshow(patch_mask[:, :, j], interpolation='nearest')
-    #         plt.show()
-
-    # for frame in dataset_gen.all_frames:
-    #     mask =
-    # image_utils.draw_prediction()
-    # print(len(dataset_gen.all_frames))
-    # for frame in dataset_gen.all_frames:
-    #     cv2.imwrite('/data/out1/{}'.format(frame.img_id), frame.annotated_img())
-    #
-    # print dataset_gen.calc_channel_mean()
-    # patch = frame.sequential_patches((224, 224), (200, 200))[0]
-    # out_img = model.predict(patch)
-    # ann_img = image_utils.draw_prediction(out_img)
-    # cv2.imwrite('/home/sanjeev/out.png', ann_img)
-    # cv2.imwrite('/home/sanjeev/avg_img.png', avg_img)
-    # for x in dataset_gen.patch_dataset_generator(1):
-    #     print x
-    #     break
-    # for frame in dataset_gen.all_frames:
-    #     if frame.img_id == '00402_bw.png':
-    #         break
-    # patches = frame.sequential_patches((64, 64), (60, 60))
-
-    # for data in dataset_gen.patch_dataset_generator(100):
-    #     for i in range(100):
-    #         ann_img = image_utils.draw_prediction(data[0]['input_1'][i], data[1]['class_out'][i], data[1]['bb_out'][i])
-    #         cv2.imwrite('/data/predic_{}.png'.format(i), ann_img)
-    #     print data
-    #     break
-    #
-    # for data in dataset_gen.grid_patch_dataset_generator(200, patch_size=(224, 224), grid_size=(32, 32), nb_objects=5):
-    #     img_data = data[0]['input_1']
-    #     labels, bboxes = data[1]['class_out'], data[1]['bb_out']
-    # print img_data.shape, labels.shape, bboxes.shape
-    # for i in range(len(img_data)):
-    #     img_ann = image_utils.draw_prediction(patch.get_img(), labels, bboxes)
-    # cv2.imwrite('/data/patches/pred{}.png'.format(i), img_ann)
-    # label_map, bbox_map = dataset_gen.grid_ground_truth(patches[0], (28, 28))
-    # print label_map.shape, bbox_map.shape
-    # annotations = image_utils.feature_to_annotations(patches[0].get_img(), label_map, bbox_map)
-    # annotated_img = np.array(patches[0].get_img())
-    # for ann in annotations:
-    #     x, y, minx, miny, maxx, maxy = ann
-    #     cv2.rectangle(annotated_img, (minx, miny), (maxx, maxy), (0, 0, 255), 2)
-    # cv2.imwrite('/data/ann.png', annotated_img)
-    # print len(patches[0].annotations)
+        w, v = np.linalg.eig(cov)
+        print(w, v)

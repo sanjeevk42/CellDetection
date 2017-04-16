@@ -1,3 +1,5 @@
+import cv2
+import os
 import numpy as np
 from fire import Fire
 from keras.engine import Input
@@ -81,7 +83,7 @@ class Detectnet(BBoxDetector):
             all_annotations.extend(annotations)
         return all_annotations
 
-    def evaluate_dataset(self, image_dataset, frame_ids):
+    def evaluate_dataset(self, image_dataset, frame_ids, out_dir):
         total_predictions = total_annotations = total_matches = 0
         for idx in frame_ids:
             frame = image_dataset.all_frames[idx]
@@ -96,6 +98,8 @@ class Detectnet(BBoxDetector):
             recall_f, precision_f, f1_f = metric_utils.score_detections(predicted_annotations, frame.annotations,
                                                                         matches)
             logger.info('Processed frame:{}, precision:{}, recall:{}, f1:{}', frame.img_id, precision_f, recall_f, f1_f)
+            annotated_img = image_utils.get_annotated_img(frame.img_data, predicted_annotations, (15, 15))
+            cv2.imwrite(os.path.join(out_dir, frame.img_id), image_utils.normalize(annotated_img))
             #         plt.imshow(image_utils.get_annotated_img(frame.img_data, predicted_annotations,(15,15)))
             #         plt.show()
         precision = total_matches * 1.0 / total_predictions
@@ -128,11 +132,11 @@ def start_training(batch_size, checkpoint_dir, dataset_dir, file_ext='.png', wei
     detector.train(**training_args)
 
 
-def evaluate_model(dataset_dir, weight_file, file_ext='.png'):
+def evaluate_model(dataset_dir, weight_file, out_dir, file_ext='.png'):
     """
     Evaluates model using all images from dataset_dir.
     Usage: python -m detection.detectors.detectnet evaluate-model '/data/lrz/hm-cell-tracking/annotations/in/' \
-    '/data/training/detectnet/model_checkpoints/model.hdf5' --file-ext '.jpg'
+    '/data/training/detectnet/model_checkpoints/model.hdf5' /data/training/detectnet/eval/ --file-ext '.jpg'
     :param dataset_dir:
     :param weight_file:
     :param file_ext:
@@ -144,7 +148,7 @@ def evaluate_model(dataset_dir, weight_file, file_ext='.png'):
     detector = Detectnet([batch_size, 224, 224, 3], no_classes, grid_size, weight_file)
 
     dataset = ImageDataset(dataset_dir, file_ext, normalize=False)
-    precision, recall, f1 = detector.evaluate_dataset(dataset, range(len(dataset.all_frames)))
+    precision, recall, f1 = detector.evaluate_dataset(dataset, range(len(dataset.all_frames)), out_dir)
     logger.info("Precision:{}, recall:{}, f1:{}", precision, recall, f1)
 
 
